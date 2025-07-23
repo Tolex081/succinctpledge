@@ -261,30 +261,33 @@ export const downloadBadge = async (pledgeData) => {
 
       // Load profile image with multiple fallbacks
       const profileImg = new Image();
-      profileImg.crossOrigin = 'anonymous';
+      // Don't set crossOrigin to avoid CORS issues in production
       
       const tryLoadProfile = async () => {
+        const cleanUsername = pledgeData.username.replace(/^@+/, '');
+        
         const sources = [
           pledgeData.profileUrl, // Original URL
-          `https://unavatar.io/x/${pledgeData.username}`,
-          `https://unavatar.io/twitter/${pledgeData.username}`,
-          `https://unavatar.io/${pledgeData.username}`,
-          `https://github.com/${pledgeData.username}.png`
+          `https://unavatar.io/x/${cleanUsername}`,
+          `https://unavatar.io/twitter/${cleanUsername}`,
+          `https://unavatar.io/github/${cleanUsername}`,
+          `https://github.com/${cleanUsername}.png`,
+          `https://api.dicebear.com/7.x/initials/svg?seed=${cleanUsername}&backgroundColor=8b5cf6`
         ];
         
         for (const src of sources) {
           try {
             const loadPromise = new Promise((resolve, reject) => {
               profileImg.onload = () => {
-                if (profileImg.naturalWidth > 1 && profileImg.naturalHeight > 1) {
+                if (profileImg.naturalWidth > 10 && profileImg.naturalHeight > 10) {
                   console.log(`Profile loaded successfully from: ${src}`);
                   resolve(true);
                 } else {
-                  reject('Image is placeholder');
+                  reject('Image too small or placeholder');
                 }
               };
               profileImg.onerror = () => reject('Failed to load');
-              setTimeout(() => reject('Timeout'), 8000);
+              setTimeout(() => reject('Timeout'), 5000);
             });
             
             profileImg.src = src;

@@ -45,7 +45,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
   };
 
   const handleSubmit = () => {
-    const cleanUsername = username.trim().replace('@', '');
+    const cleanUsername = username.trim().replace(/^@+/, '');
     
     if (!cleanUsername) {
       alert('Please enter your username!');
@@ -76,7 +76,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
   };
 
   const handleDownloadBadge = () => {
-    const cleanUsername = username.trim().replace('@', '');
+    const cleanUsername = username.trim().replace(/^@+/, '');
     
     if (!cleanUsername) {
       alert('Please enter your username first!');
@@ -96,9 +96,9 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
     // Import badgeGenerator dynamically
     import('../utils/badgeGenerator').then(({ downloadBadge }) => {
       downloadBadge(pledgeData).then(() => {
-        onToastShow('🏆 Badge downloaded successfully!');
+        onToastShow('Badge downloaded successfully!');
       }).catch(() => {
-        onToastShow('❌ Error downloading badge');
+        onToastShow('Error downloading badge');
       });
     });
   };
@@ -107,7 +107,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-lg font-semibold mb-2 text-purple-200">Enter Your X Username:</label>
+          <label className="block text-lg font-semibold mb-2 text-purple-200">👤 Enter Your X Username:</label>
           <input 
             type="text" 
             value={username}
@@ -137,7 +137,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
       </div>
       
       <div>
-        <label className="block text-lg font-semibold mb-2 text-purple-200">Your Pledge:</label>
+        <label className="block text-lg font-semibold mb-2 text-purple-200">📝 Your Pledge:</label>
         <textarea 
           rows="4" 
           value={message}
@@ -152,13 +152,13 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
           onClick={generateAIPledge}
           className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 px-6 py-3 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95"
         >
-           Generate AI Pledge
+          🤖 Generate AI Pledge
         </button>
         <button 
           onClick={getRandomPledge}
           className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95"
         >
-          NEXT
+          🎲
         </button>
       </div>
       
@@ -167,13 +167,13 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
           onClick={handleSubmit}
           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-           SUBMIT PLEDGE 
+          ⚔️ SUBMIT PLEDGE ⚔️
         </button>
         <button 
           onClick={handleDownloadBadge}
           className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-          DOWNLOAD BADGE 
+          🏆 DOWNLOAD BADGE 🏆
         </button>
       </div>
     </div>

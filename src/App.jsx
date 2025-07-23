@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import PledgeForm from './components/PledgeForm';
 import CommunityPledges from './components/CommunityPledges';
@@ -42,19 +42,19 @@ function App() {
     setSelectedPledge(null);
   };
 
-  const showSuccessToast = (message) => {
+  const showSuccessToast = useCallback((message) => {
     setToastMessage(message);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
-  };
+  }, []);
 
-  const updatePreview = (username, message) => {
+  const updatePreview = useCallback((username, message) => {
     setCurrentPreview({
       username,
       message,
       timestamp: new Date()
     });
-  };
+  }, []);
 
   // Inline confetti function
   const createConfettiEffect = () => {
