@@ -1,4 +1,4 @@
-// Complete badge generation utility with logo-only header and full profile integration
+// Complete badge generation utility with proper error handling and multiple fallbacks
 export const downloadBadge = async (pledgeData) => {
   return new Promise((resolve, reject) => {
     try {
@@ -259,19 +259,50 @@ export const downloadBadge = async (pledgeData) => {
         checkAndFinish();
       };
 
-      // Load profile image
+      // Load profile image with multiple fallbacks
       const profileImg = new Image();
       profileImg.crossOrigin = 'anonymous';
       
-      profileImg.onload = () => {
-        console.log('Profile image loaded successfully');
-        drawProfile(true, profileImg);
-        profileLoaded = true;
-        checkAndFinish();
-      };
-      
-      profileImg.onerror = () => {
-        console.warn('Profile image failed to load, using emoji fallback');
+      const tryLoadProfile = async () => {
+        const sources = [
+          pledgeData.profileUrl, // Original URL
+          `https://unavatar.io/x/${pledgeData.username}`,
+          `https://unavatar.io/twitter/${pledgeData.username}`,
+          `https://unavatar.io/${pledgeData.username}`,
+          `https://github.com/${pledgeData.username}.png`
+        ];
+        
+        for (const src of sources) {
+          try {
+            const loadPromise = new Promise((resolve, reject) => {
+              profileImg.onload = () => {
+                if (profileImg.naturalWidth > 1 && profileImg.naturalHeight > 1) {
+                  console.log(`Profile loaded successfully from: ${src}`);
+                  resolve(true);
+                } else {
+                  reject('Image is placeholder');
+                }
+              };
+              profileImg.onerror = () => reject('Failed to load');
+              setTimeout(() => reject('Timeout'), 8000);
+            });
+            
+            profileImg.src = src;
+            await loadPromise;
+            
+            drawProfile(true, profileImg);
+            profileLoaded = true;
+            checkAndFinish();
+            return; // Success
+            
+          } catch (error) {
+            console.log(`Failed to load profile from ${src}:`, error);
+            continue;
+          }
+        }
+        
+        // All sources failed
+        console.warn('All profile sources failed, using fallback');
         drawProfile(false);
         profileLoaded = true;
         checkAndFinish();
@@ -283,21 +314,14 @@ export const downloadBadge = async (pledgeData) => {
           console.warn('Logo loading timeout, using fallback');
           logoImg.onerror();
         }
-      }, 8000);
-
-      setTimeout(() => {
-        if (!profileLoaded) {
-          console.warn('Profile image loading timeout, using fallback');
-          profileImg.onerror();
-        }
-      }, 8000);
+      }, 10000);
 
       // Start loading images
       console.log(`Loading logo from: /succinct-logo.png`);
       console.log(`Loading profile from: ${pledgeData.profileUrl}`);
       
       logoImg.src = '/succinct-logo.png';
-      profileImg.src = pledgeData.profileUrl;
+      tryLoadProfile();
       
     } catch (error) {
       console.error('Badge generation error:', error);

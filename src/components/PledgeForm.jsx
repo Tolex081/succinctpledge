@@ -57,11 +57,14 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
       return;
     }
     
+    // Use the loaded profile image URL or fallback to X
+    const profileUrl = profileImage || `https://unavatar.io/x/${cleanUsername}`;
+    
     const pledgeData = {
       username: cleanUsername,
       message: `I, ${cleanUsername}, ${message.trim()}`,
       timestamp: new Date(),
-      profileUrl: `https://unavatar.io/x/${cleanUsername}`
+      profileUrl: profileUrl
     };
     
     onSubmit(pledgeData);
@@ -80,11 +83,14 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
       return;
     }
     
+    // Use the loaded profile image URL or fallback to X
+    const profileUrl = profileImage || `https://unavatar.io/x/${cleanUsername}`;
+    
     const pledgeData = {
       username: cleanUsername,
       message: message.trim() ? `I, ${cleanUsername}, ${message.trim()}` : `I, ${cleanUsername}, pledge my allegiance to Succinct!`,
       timestamp: new Date(),
-      profileUrl: `https://unavatar.io/x/${cleanUsername}`
+      profileUrl: profileUrl
     };
     
     // Import badgeGenerator dynamically
@@ -101,7 +107,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-lg font-semibold mb-2 text-purple-200"> Enter Your X Username:</label>
+          <label className="block text-lg font-semibold mb-2 text-purple-200">Enter Your X Username:</label>
           <input 
             type="text" 
             value={username}
@@ -131,7 +137,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
       </div>
       
       <div>
-        <label className="block text-lg font-semibold mb-2 text-purple-200"> Your Pledge:</label>
+        <label className="block text-lg font-semibold mb-2 text-purple-200">Your Pledge:</label>
         <textarea 
           rows="4" 
           value={message}
@@ -161,13 +167,13 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow, currentPreview }) 
           onClick={handleSubmit}
           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-          SUBMIT PLEDGE 
+           SUBMIT PLEDGE 
         </button>
         <button 
           onClick={handleDownloadBadge}
           className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-           DOWNLOAD BADGE 
+          DOWNLOAD BADGE 
         </button>
       </div>
     </div>

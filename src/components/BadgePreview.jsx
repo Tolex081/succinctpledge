@@ -6,35 +6,73 @@ const BadgePreview = ({ preview, onDownload }) => {
   useEffect(() => {
     const cleanUsername = preview.username?.replace('@', '');
     if (cleanUsername) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        setProfileImage(img.src);
+      setProfileImage(null); // Reset while loading
+      
+      const loadProfileImage = async () => {
+        const sources = [
+          `https://unavatar.io/x/${cleanUsername}`,
+          `https://unavatar.io/twitter/${cleanUsername}`,
+          `https://unavatar.io/${cleanUsername}`,
+          `https://github.com/${cleanUsername}.png`
+        ];
         
-        // Calculate logo dimensions exactly like canvas does
-        const logoImg = document.querySelector('#badge-logo');
-        if (logoImg && img.naturalWidth && img.naturalHeight) {
-          const targetHeight = 32;
-          const maxWidth = 240;
-          const aspectRatio = img.naturalWidth / img.naturalHeight;
-          
-          let logoHeight = targetHeight;
-          let logoWidth = targetHeight * aspectRatio;
-          
-          if (logoWidth > maxWidth) {
-            logoWidth = maxWidth;
-            logoHeight = maxWidth / aspectRatio;
+        for (const src of sources) {
+          try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            const loadPromise = new Promise((resolve, reject) => {
+              img.onload = () => {
+                // Check if image is actually loaded (not a placeholder)
+                if (img.naturalWidth > 1 && img.naturalHeight > 1) {
+                  resolve(src);
+                } else {
+                  reject('Image is placeholder');
+                }
+              };
+              img.onerror = () => reject('Failed to load');
+              
+              // Add timeout
+              setTimeout(() => reject('Timeout'), 8000);
+            });
+            
+            img.src = src;
+            const validSrc = await loadPromise;
+            setProfileImage(validSrc);
+            
+            // Calculate logo dimensions exactly like canvas does
+            const logoImg = document.querySelector('#badge-logo');
+            if (logoImg && img.naturalWidth && img.naturalHeight) {
+              const targetHeight = 32;
+              const maxWidth = 240;
+              const aspectRatio = img.naturalWidth / img.naturalHeight;
+              
+              let logoHeight = targetHeight;
+              let logoWidth = targetHeight * aspectRatio;
+              
+              if (logoWidth > maxWidth) {
+                logoWidth = maxWidth;
+                logoHeight = maxWidth / aspectRatio;
+              }
+              
+              // Apply calculated dimensions
+              logoImg.style.width = logoWidth + 'px';
+              logoImg.style.height = logoHeight + 'px';
+              logoImg.style.maxWidth = 'none';
+            }
+            return; // Success, exit loop
+            
+          } catch (error) {
+            console.log(`Failed to load profile from ${src}:`, error);
+            continue; // Try next source
           }
-          
-          // Apply calculated dimensions
-          logoImg.style.width = logoWidth + 'px';
-          logoImg.style.height = logoHeight + 'px';
-          logoImg.style.maxWidth = 'none';
         }
+        
+        // If all sources fail, keep null (shows PFP fallback)
+        console.log('All profile image sources failed for:', cleanUsername);
       };
-      img.onerror = () => setProfileImage(null);
-      // Use X provider specifically for unavatar.io
-      img.src = `https://unavatar.io/x/${cleanUsername}`;
+      
+      loadProfileImage();
     } else {
       setProfileImage(null);
     }
@@ -89,7 +127,7 @@ const BadgePreview = ({ preview, onDownload }) => {
 
   return (
     <div className="w-full max-w-sm">
-      <h3 className="text-xl font-bold mb-4 text-purple-200 text-center">Badge Preview</h3>
+      <h3 className="text-xl font-bold mb-4 text-purple-200 text-center"> Badge Preview</h3>
       
       {/* Badge Container */}
       <div className="badge-preview badge-glow rounded-2xl p-6 w-72 h-96 flex flex-col items-center justify-between stamp-effect mx-auto">
