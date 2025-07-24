@@ -52,7 +52,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
           attempts++;
         } while (
           attempts < 50 && 
-          nodes.some(existingNode => {
+          nodes.some((existingNode) => {
             const distance = Math.sqrt(
               Math.pow(position.x - existingNode.x, 2) + 
               Math.pow(position.y - existingNode.y, 2)
