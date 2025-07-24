@@ -4,6 +4,12 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
   const [showNetwork, setShowNetwork] = useState(false);
   const [networkNodes, setNetworkNodes] = useState([]);
 
+  // ***** START OF THE ONLY ESSENTIAL CHANGE *****
+  // This PROXY_BASE_URL will now correctly point to your Vercel Serverless Function
+  // when deployed, or a relative path in local development that Vercel CLI can handle.
+  const PROXY_BASE_URL = '/api/proxy-image?url=';
+  // ***** END OF THE ONLY ESSENTIAL CHANGE *****
+
   // Generate network connections and positions
   useEffect(() => {
     if (!pledges.length || loading) {
@@ -151,7 +157,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
           </button>
         )}
       </div>
-             
+              
       {/* Stats */}
       <div className="flex justify-center mb-8">
         <div className="bg-gradient-to-r from-purple-600/50 to-pink-600/50 rounded-full px-8 py-4">
@@ -160,7 +166,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
           </span>
         </div>
       </div>
-             
+              
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center py-16">
@@ -170,7 +176,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
           </div>
         </div>
       )}
-             
+              
       {/* Pledges Display */}
       {!loading && (
         <>
@@ -186,6 +192,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
             <NetworkVisualization 
               networkNodes={networkNodes}
               onNodeClick={onPledgeClick}
+              PROXY_BASE_URL={PROXY_BASE_URL} // Pass the proxy URL down
             />
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 min-h-[200px]">
@@ -194,6 +201,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
                   key={pledge.id || `${pledge.username}-${pledge.timestamp?.getTime ? pledge.timestamp.getTime() : Date.now()}`}
                   pledge={pledge}
                   onClick={() => onPledgeClick(pledge)}
+                  PROXY_BASE_URL={PROXY_BASE_URL} // Pass the proxy URL down
                 />
               ))}
             </div>
@@ -205,7 +213,7 @@ const CommunityPledges = ({ pledges, onPledgeClick, loading }) => {
 };
 
 // Network Visualization Component
-const NetworkVisualization = ({ networkNodes, onNodeClick }) => {
+const NetworkVisualization = ({ networkNodes, onNodeClick, PROXY_BASE_URL }) => { // Receive proxy URL
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 500 });
 
@@ -305,6 +313,7 @@ const NetworkVisualization = ({ networkNodes, onNodeClick }) => {
               <NetworkPledgeBall 
                 pledge={node}
                 onClick={() => onNodeClick(node)}
+                PROXY_BASE_URL={PROXY_BASE_URL} // Pass the proxy URL down to the ball
               />
             </div>
           );
@@ -320,15 +329,22 @@ const NetworkVisualization = ({ networkNodes, onNodeClick }) => {
 };
 
 // Network version of PledgeBall with enhanced styling (no username)
-const NetworkPledgeBall = ({ pledge, onClick }) => {
+const NetworkPledgeBall = ({ pledge, onClick, PROXY_BASE_URL }) => { // Receive proxy URL
   const getProfileUrl = () => {
+    let originalUrl;
     // More robust profile URL handling with multiple fallbacks
-    if (pledge.profileUrl) return pledge.profileUrl;
-    if (pledge.profilePicture) return pledge.profilePicture;
-    if (pledge.avatar) return pledge.avatar;
-    if (pledge.profileImage) return pledge.profileImage;
-    if (pledge.username) return `https://unavatar.io/x/${pledge.username}`;
-    return `https://unavatar.io/fallback/${pledge.id || 'user'}`;
+    if (pledge.profileUrl) originalUrl = pledge.profileUrl;
+    else if (pledge.profilePicture) originalUrl = pledge.profilePicture;
+    else if (pledge.avatar) originalUrl = pledge.avatar;
+    else if (pledge.profileImage) originalUrl = pledge.profileImage;
+    else if (pledge.username) originalUrl = `https://unavatar.io/x/${pledge.username}`;
+    else originalUrl = `https://unavatar.io/fallback/${pledge.id || 'user'}`;
+
+    // IMPORTANT: Proxy the unavatar.io URLs if they start with unavatar.io
+    if (originalUrl.startsWith('https://unavatar.io')) {
+      return PROXY_BASE_URL + encodeURIComponent(originalUrl);
+    }
+    return originalUrl; // Return other URLs directly if they are not unavatar.io
   };
 
   return (
@@ -354,16 +370,23 @@ const NetworkPledgeBall = ({ pledge, onClick }) => {
   );
 };
 
-const PledgeBall = ({ pledge, onClick }) => {
+const PledgeBall = ({ pledge, onClick, PROXY_BASE_URL }) => { // Receive proxy URL
   // Handle both Firestore timestamp and regular Date objects
   const getProfileUrl = () => {
+    let originalUrl;
     // More robust profile URL handling with multiple fallbacks
-    if (pledge.profileUrl) return pledge.profileUrl;
-    if (pledge.profilePicture) return pledge.profilePicture;
-    if (pledge.avatar) return pledge.avatar;
-    if (pledge.profileImage) return pledge.profileImage;
-    if (pledge.username) return `https://unavatar.io/x/${pledge.username}`;
-    return `https://unavatar.io/fallback/${pledge.id || 'user'}`;
+    if (pledge.profileUrl) originalUrl = pledge.profileUrl;
+    else if (pledge.profilePicture) originalUrl = pledge.profilePicture;
+    else if (pledge.avatar) originalUrl = pledge.avatar;
+    else if (pledge.profileImage) originalUrl = pledge.profileImage;
+    else if (pledge.username) originalUrl = `https://unavatar.io/x/${pledge.username}`;
+    else originalUrl = `https://unavatar.io/fallback/${pledge.id || 'user'}`;
+    
+    // IMPORTANT: Proxy the unavatar.io URLs if they start with unavatar.io
+    if (originalUrl.startsWith('https://unavatar.io')) {
+      return PROXY_BASE_URL + encodeURIComponent(originalUrl);
+    }
+    return originalUrl; // Return other URLs directly if they are not unavatar.io
   };
   
   return (
