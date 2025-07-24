@@ -5,6 +5,8 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
   const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
   const [currentPledgeIndex, setCurrentPledgeIndex] = useState(0);
+  const [profileImage, setProfileImage] = useState(null); // New state for uploaded image
+  const [profileImagePreview, setProfileImagePreview] = useState(null); // New state for image preview
 
   useEffect(() => {
     const cleanUsername = username.trim().replace(/^@+/, '');
@@ -13,8 +15,10 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
       : cleanUsername
       ? `I, ${cleanUsername}, pledge my allegiance to Succinct!`
       : '';
-    onPreviewUpdate(cleanUsername, fullMessage);
-  }, [username, message, onPreviewUpdate]);
+    
+    // Pass image data to preview as well
+    onPreviewUpdate(cleanUsername, fullMessage, profileImage);
+  }, [username, message, profileImage, onPreviewUpdate]);
 
   const handleUsernameChange = (e) => {
     setUsername(e.target.value);
@@ -22,6 +26,41 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
 
   const handleMessageChange = (e) => {
     setMessage(e.target.value);
+  };
+
+  // New function to handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload a valid image file (JPG, PNG, GIF, etc.)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64Image = event.target.result;
+        setProfileImage(base64Image);
+        setProfileImagePreview(base64Image);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // New function to remove uploaded image
+  const removeUploadedImage = () => {
+    setProfileImage(null);
+    setProfileImagePreview(null);
+    // Clear the file input
+    const fileInput = document.getElementById('profile-image-input');
+    if (fileInput) fileInput.value = '';
   };
 
   const generateAIPledge = () => {
@@ -47,18 +86,21 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
       return;
     }
 
-    const profileUrl = `https://unavatar.io/twitter/${cleanUsername}`;
+    // Use uploaded image or fallback to unavatar
+    const profileUrl = profileImage || `https://unavatar.io/twitter/${cleanUsername}`;
 
     const pledgeData = {
       username: cleanUsername,
       message: `I, ${cleanUsername}, ${message.trim()}`,
       timestamp: new Date(),
       profileUrl: profileUrl,
+      hasCustomImage: !!profileImage, // Flag to indicate custom uploaded image
     };
 
     onSubmit(pledgeData);
     setUsername('');
     setMessage('');
+    removeUploadedImage(); // Clear uploaded image after submit
   };
 
   const handleDownloadBadge = () => {
@@ -69,7 +111,8 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
       return;
     }
 
-    const profileUrl = `https://unavatar.io/twitter/${cleanUsername}`;
+    // Use uploaded image or fallback to unavatar
+    const profileUrl = profileImage || `https://unavatar.io/twitter/${cleanUsername}`;
 
     const pledgeData = {
       username: cleanUsername,
@@ -78,17 +121,28 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
         : `I, ${cleanUsername}, pledge my allegiance to Succinct!`,
       timestamp: new Date(),
       profileUrl: profileUrl,
+      hasCustomImage: !!profileImage, // Flag for badge generator
     };
 
     import('../utils/badgeGenerator').then(({ downloadBadge }) => {
       downloadBadge(pledgeData)
         .then(() => {
-          onToastShow('Badge downloaded successfully!');
+          onToastShow('✅ Badge downloaded successfully!');
         })
-        .catch(() => {
-          onToastShow('Error downloading badge');
+        .catch((error) => {
+          console.error('Badge download error:', error);
+          onToastShow('❌ Error downloading badge');
         });
     });
+  };
+
+  // Get the profile image source for display
+  const getProfileImageSrc = () => {
+    if (profileImagePreview) return profileImagePreview;
+    if (username.trim()) {
+      return `https://unavatar.io/twitter/${username.trim().replace(/^@+/, '')}`;
+    }
+    return null;
   };
 
   return (
@@ -109,17 +163,19 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
 
         <div className="flex flex-col justify-end">
           <div className="text-center">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-pink-500 mb-2 mx-auto">
-              {username.trim() ? (
+            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-r from-purple-500 to-pink-500 mb-2 mx-auto group">
+              {getProfileImageSrc() ? (
                 <img
-                  src={`https://unavatar.io/twitter/${username.trim().replace(/^@+/, '')}`}
+                  src={getProfileImageSrc()}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      username
-                    )}&background=8B5CF6&color=fff`;
+                    if (!profileImagePreview) {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        username || 'User'
+                      )}&background=8B5CF6&color=fff`;
+                    }
                   }}
                 />
               ) : (
@@ -127,14 +183,53 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
                   👤
                 </div>
               )}
+              
+              {/* Upload overlay */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <label htmlFor="profile-image-input" className="cursor-pointer text-white text-xs font-bold">
+                   UPLOAD
+                </label>
+              </div>
             </div>
-            <p className="text-purple-200 text-sm">Profile Preview</p>
+            
+            {/* Image upload controls */}
+            <div className="space-y-2">
+              <input
+                id="profile-image-input"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              
+              <div className="flex gap-2 justify-center">
+                <label
+                  htmlFor="profile-image-input"
+                  className="px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-lg text-xs font-bold cursor-pointer transition-all"
+                >
+                  📤 Upload PFP
+                </label>
+                
+                {profileImagePreview && (
+                  <button
+                    onClick={removeUploadedImage}
+                    className="px-3 py-1 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 rounded-lg text-xs font-bold transition-all"
+                  >
+                     Remove
+                  </button>
+                )}
+              </div>
+              
+              <p className="text-purple-200 text-xs">
+                {profileImagePreview ? '✅ Custom Image' : 'Profile Preview'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-lg font-semibold mb-2 text-purple-200"> Your Pledge:</label>
+        <label className="block text-lg font-semibold mb-2 text-purple-200">Your Pledge:</label>
         <textarea
           rows="4"
           value={message}
@@ -155,7 +250,7 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
           onClick={getRandomPledge}
           className="px-6 py-3 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95"
         >
-          NEXT
+           NEXT
         </button>
       </div>
 
@@ -164,13 +259,13 @@ const PledgeForm = ({ onSubmit, onPreviewUpdate, onToastShow }) => {
           onClick={handleSubmit}
           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-           SUBMIT PLEDGE 
+         SUBMIT PLEDGE 
         </button>
         <button
           onClick={handleDownloadBadge}
           className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 px-8 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 active:scale-95 glow"
         >
-           DOWNLOAD BADGE 
+          DOWNLOAD BADGE 
         </button>
       </div>
     </div>

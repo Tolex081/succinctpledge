@@ -88,11 +88,12 @@ function App() {
     setTimeout(() => setShowToast(false), 3000);
   }, []);
 
-  const updatePreview = useCallback((username, message) => {
+  const updatePreview = useCallback((username, message, profileImage) => {
     setCurrentPreview({
       username,
       message,
-      timestamp: new Date()
+      timestamp: new Date(),
+      profileImage // Add the image data to preview
     });
   }, []);
 
