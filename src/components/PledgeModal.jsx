@@ -8,7 +8,7 @@ const PledgeModal = ({ pledge, onClose, onDownload }) => {
         onClose();
       }
     };
-    
+
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
@@ -26,6 +26,7 @@ const PledgeModal = ({ pledge, onClose, onDownload }) => {
       await downloadBadge(pledge);
       onDownload('🏆 Badge downloaded successfully!');
     } catch (error) {
+      console.error('Badge download failed:', error);
       onDownload('❌ Error downloading badge');
     }
   };
@@ -43,16 +44,17 @@ const PledgeModal = ({ pledge, onClose, onDownload }) => {
               src={pledge.profileUrl} 
               alt={pledge.username}
               className="w-full h-full object-cover rounded-full"
+              crossOrigin="anonymous"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.parentElement.innerHTML = '<span class="text-3xl text-white">👤</span>';
               }}
             />
           </div>
-          
+
           {/* Username */}
           <h3 className="text-2xl font-bold mb-2">{pledge.username}</h3>
-          
+
           {/* Timestamp */}
           <p className="text-purple-200 text-sm mb-4">
             {pledge.timestamp.toLocaleString('en-US', {
@@ -63,19 +65,19 @@ const PledgeModal = ({ pledge, onClose, onDownload }) => {
               minute: '2-digit'
             })}
           </p>
-          
+
           {/* Pledge Message */}
           <div className="bg-black/30 rounded-lg p-4 mb-6">
             <p className="text-white leading-relaxed">{pledge.message}</p>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex gap-3">
             <button 
               onClick={handleDownloadBadge}
               className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 px-4 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
             >
-              🏆 Download Badge
+               Download Badge
             </button>
             <button 
               onClick={onClose}

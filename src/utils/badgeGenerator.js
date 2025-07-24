@@ -105,17 +105,27 @@ export const downloadBadge = async (pledgeData) => {
         const profileY = 260; // Adjusted for larger container
         const profileRadius = 70; // Increased from 60
         
-        if (hasProfile && profileImg && isImageValid(profileImg)) {
+        if (hasProfile && profileImg) {
           try {
-            // Draw profile image
+            // Draw profile image (whether it's an Image or Canvas)
             ctx.save();
             ctx.beginPath();
             ctx.arc(profileX, profileY, profileRadius, 0, 2 * Math.PI);
             ctx.clip();
-            ctx.drawImage(profileImg, profileX - profileRadius, profileY - profileRadius, profileRadius * 2, profileRadius * 2);
+            
+            if (profileImg instanceof HTMLCanvasElement) {
+              // Draw canvas fallback
+              ctx.drawImage(profileImg, profileX - profileRadius, profileY - profileRadius, profileRadius * 2, profileRadius * 2);
+            } else if (isImageValid(profileImg)) {
+              // Draw actual image
+              ctx.drawImage(profileImg, profileX - profileRadius, profileY - profileRadius, profileRadius * 2, profileRadius * 2);
+            } else {
+              throw new Error('Invalid image');
+            }
+            
             ctx.restore();
           } catch (e) {
-            console.warn('Failed to draw profile image, using fallback');
+            console.warn('Failed to draw profile image, using text fallback');
             drawProfileFallback(profileX, profileY);
           }
         } else {
@@ -243,7 +253,7 @@ export const downloadBadge = async (pledgeData) => {
 
       // Load logo
       const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
+      logoImg.crossOrigin = 'anonymous'; // Enable CORS for logo
       
       logoImg.onload = () => {
         console.log('Logo loaded successfully');
@@ -259,41 +269,40 @@ export const downloadBadge = async (pledgeData) => {
         checkAndFinish();
       };
 
-      // Load profile image with multiple fallbacks
-      const profileImg = new Image();
-      // Don't set crossOrigin to avoid CORS issues in production
-      
+      // Load profile image with fallback to canvas-friendly approach
       const tryLoadProfile = async () => {
         const cleanUsername = pledgeData.username.replace(/^@+/, '');
         
         const sources = [
           pledgeData.profileUrl, // Original URL
           `https://unavatar.io/x/${cleanUsername}`,
-          `https://unavatar.io/twitter/${cleanUsername}`,
           `https://unavatar.io/github/${cleanUsername}`,
-          `https://github.com/${cleanUsername}.png`,
-          `https://api.dicebear.com/7.x/initials/svg?seed=${cleanUsername}&backgroundColor=8b5cf6`
+          `https://github.com/${cleanUsername}.png`
         ];
         
+        // Try to load profile image with CORS
         for (const src of sources) {
           try {
+            const profileImg = new Image();
+            profileImg.crossOrigin = 'anonymous';
+            
             const loadPromise = new Promise((resolve, reject) => {
               profileImg.onload = () => {
                 if (profileImg.naturalWidth > 10 && profileImg.naturalHeight > 10) {
                   console.log(`Profile loaded successfully from: ${src}`);
-                  resolve(true);
+                  resolve(profileImg);
                 } else {
                   reject('Image too small or placeholder');
                 }
               };
               profileImg.onerror = () => reject('Failed to load');
-              setTimeout(() => reject('Timeout'), 5000);
+              setTimeout(() => reject('Timeout'), 3000);
             });
             
             profileImg.src = src;
-            await loadPromise;
+            const validImg = await loadPromise;
             
-            drawProfile(true, profileImg);
+            drawProfile(true, validImg);
             profileLoaded = true;
             checkAndFinish();
             return; // Success
@@ -304,11 +313,37 @@ export const downloadBadge = async (pledgeData) => {
           }
         }
         
-        // All sources failed
-        console.warn('All profile sources failed, using fallback');
-        drawProfile(false);
+        // If all external sources fail, create a canvas-based fallback
+        console.warn('All profile sources failed, creating canvas fallback');
+        const fallbackCanvas = createProfileFallback(cleanUsername);
+        drawProfile(true, fallbackCanvas);
         profileLoaded = true;
         checkAndFinish();
+      };
+
+      // Create a canvas-based profile fallback that won't taint the main canvas
+      const createProfileFallback = (username) => {
+        const fallbackCanvas = document.createElement('canvas');
+        const fallbackCtx = fallbackCanvas.getContext('2d');
+        fallbackCanvas.width = 140;
+        fallbackCanvas.height = 140;
+        
+        // Create a gradient background
+        const gradient = fallbackCtx.createRadialGradient(70, 70, 0, 70, 70, 70);
+        gradient.addColorStop(0, '#8B45FF');
+        gradient.addColorStop(1, '#6366F1');
+        fallbackCtx.fillStyle = gradient;
+        fallbackCtx.fillRect(0, 0, 140, 140);
+        
+        // Add initials
+        const initials = username.slice(0, 2).toUpperCase();
+        fallbackCtx.fillStyle = 'white';
+        fallbackCtx.font = 'bold 48px Arial, sans-serif';
+        fallbackCtx.textAlign = 'center';
+        fallbackCtx.textBaseline = 'middle';
+        fallbackCtx.fillText(initials, 70, 70);
+        
+        return fallbackCanvas;
       };
 
       // Set timeouts to prevent hanging

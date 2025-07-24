@@ -5,6 +5,8 @@ import CommunityPledges from './components/CommunityPledges';
 import PledgeModal from './components/PledgeModal';
 import BadgePreview from './components/BadgePreview';
 import SuccessToast from './components/SuccessToast';
+// Import Firebase functions
+import { savePledge, subscribeToPledges } from './firebase/services';
 
 function App() {
   const [pledges, setPledges] = useState([]);
@@ -12,27 +14,65 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [currentPreview, setCurrentPreview] = useState({
     username: '',
     message: '',
     timestamp: new Date()
   });
 
-  // Load sample pledges on component mount
+  // Set up real-time Firebase listener
   useEffect(() => {
-    // Start with empty pledges array for deployment
-    setPledges([]);
+    console.log('Setting up Firebase listener...');
+    
+    const unsubscribe = subscribeToPledges((newPledges) => {
+      console.log('Received pledges from Firebase:', newPledges.length);
+      setPledges(newPledges);
+      setLoading(false);
+    });
+
+    // Cleanup function
+    return () => {
+      console.log('Cleaning up Firebase listener');
+      unsubscribe();
+    };
   }, []);
 
-  const handlePledgeSubmit = (pledgeData) => {
-    setPledges(prev => [pledgeData, ...prev]);
-    setCurrentPreview({ username: '', message: '', timestamp: new Date() });
-    showSuccessToast('✅ Pledge submitted successfully!');
-    // Inline confetti function
-    createConfettiEffect();
+  // Handle pledge submission with Firebase
+  const handlePledgeSubmit = async (pledgeData) => {
+    try {
+      console.log('Submitting pledge to Firebase:', pledgeData);
+      setLoading(true);
+      
+      // Save to Firebase (includes duplicate check)
+      const savedPledge = await savePledge(pledgeData);
+      console.log('Pledge saved successfully:', savedPledge);
+      
+      // Clear preview
+      setCurrentPreview({ username: '', message: '', timestamp: new Date() });
+      
+      // Show success message
+      showSuccessToast('✅ Pledge submitted successfully!');
+      
+      // Create confetti effect
+      createConfettiEffect();
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to save pledge:', error);
+      setLoading(false);
+      
+      // Check if it's a duplicate user error
+      if (error.message && error.message.includes('has already made a pledge')) {
+        showSuccessToast('⚠️ You have already made a pledge! Only one pledge per user is allowed.');
+      } else {
+        showSuccessToast('❌ Failed to submit pledge. Please try again.');
+      }
+    }
   };
 
   const handlePledgeClick = (pledge) => {
+    console.log('Opening pledge modal for:', pledge);
     setSelectedPledge(pledge);
     setShowModal(true);
   };
@@ -131,6 +171,7 @@ function App() {
                   onPreviewUpdate={updatePreview}
                   onToastShow={showSuccessToast}
                   currentPreview={currentPreview}
+                  loading={loading}
                 />
               </div>
               
@@ -148,6 +189,7 @@ function App() {
           <CommunityPledges 
             pledges={pledges}
             onPledgeClick={handlePledgeClick}
+            loading={loading}
           />
         </div>
       </div>

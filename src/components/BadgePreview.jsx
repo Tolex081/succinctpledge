@@ -2,29 +2,31 @@ import React, { useState, useEffect } from 'react';
 
 const BadgePreview = ({ preview, onDownload }) => {
   const [profileImage, setProfileImage] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     const cleanUsername = preview.username?.replace(/^@+/, '');
-    if (cleanUsername && cleanUsername.length > 1) { // Only try if username is more than 1 char
+    if (cleanUsername && cleanUsername.length > 1) {
       setProfileImage(null); // Reset while loading
+      setProfileLoading(true); // Show loading state
       
       const loadProfileImage = async () => {
         const sources = [
           `https://unavatar.io/x/${cleanUsername}`,
           `https://unavatar.io/github/${cleanUsername}`,
-          `https://github.com/${cleanUsername}.png`,
-          `https://api.dicebear.com/7.x/initials/svg?seed=${cleanUsername}&backgroundColor=8b5cf6&textColor=ffffff`
+          `https://github.com/${cleanUsername}.png`
         ];
         
         for (const src of sources) {
           try {
-            // Create a promise that resolves when image loads successfully
+            // Create a test image to check if it loads
             const testImg = new Image();
             
             const imageLoaded = await new Promise((resolve, reject) => {
               testImg.onload = () => {
                 // Check if image is actually loaded (not a placeholder)
                 if (testImg.naturalWidth > 10 && testImg.naturalHeight > 10) {
+                  console.log(`Badge preview: Profile loaded from ${src}`);
                   resolve(src);
                 } else {
                   reject('Image too small or placeholder');
@@ -36,54 +38,38 @@ const BadgePreview = ({ preview, onDownload }) => {
               // Add timeout
               setTimeout(() => reject('Timeout'), 2000);
               
-              // Don't set crossOrigin to avoid CORS issues
+              // Don't set crossOrigin to avoid CORS issues in preview
               testImg.src = src;
             });
             
             // If we get here, the image loaded successfully
             setProfileImage(imageLoaded);
-            console.log(`Badge preview profile loaded from: ${imageLoaded}`);
-            
-            // Calculate logo dimensions exactly like canvas does
-            const logoImg = document.querySelector('#badge-logo');
-            if (logoImg) {
-              const targetHeight = 32;
-              const maxWidth = 240;
-              const aspectRatio = testImg.naturalWidth / testImg.naturalHeight;
-              
-              let logoHeight = targetHeight;
-              let logoWidth = targetHeight * aspectRatio;
-              
-              if (logoWidth > maxWidth) {
-                logoWidth = maxWidth;
-                logoHeight = maxWidth / aspectRatio;
-              }
-              
-              // Apply calculated dimensions
-              logoImg.style.width = logoWidth + 'px';
-              logoImg.style.height = logoHeight + 'px';
-              logoImg.style.maxWidth = 'none';
-            }
+            setProfileLoading(false);
             return; // Success, exit loop
             
           } catch (error) {
-            console.log(`Badge preview failed to load from ${src}:`, error);
+            console.log(`Badge preview: Failed to load from ${src}:`, error);
             continue; // Try next source
           }
         }
         
-        // If all sources fail, keep null (shows PFP fallback)
-        console.log('All badge preview sources failed for:', cleanUsername);
+        // If all sources fail, keep null (shows initials fallback)
+        console.log('Badge preview: All sources failed, using initials fallback');
+        setProfileLoading(false);
       };
       
       // Debounce the loading to avoid too many requests
       const timeoutId = setTimeout(() => {
         loadProfileImage();
-      }, 500);
+      }, 300); // Shorter delay for better UX
       
-      return () => clearTimeout(timeoutId);
+      return () => {
+        clearTimeout(timeoutId);
+        setProfileLoading(false);
+      };
     } else {
       setProfileImage(null);
+      setProfileLoading(false);
     }
   }, [preview.username]);
 
@@ -190,16 +176,29 @@ const BadgePreview = ({ preview, onDownload }) => {
         
         {/* Profile Section */}
         <div className="text-center flex-1 flex flex-col justify-center">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-4xl mb-4 mx-auto border-4 border-white/50">
-            {profileImage ? (
+          <div className="w-28 h-28 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-4xl mb-4 mx-auto border-4 border-white/50 relative overflow-hidden">
+            {profileLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full"></div>
+              </div>
+            ) : profileImage ? (
               <img 
                 src={profileImage} 
                 alt="Profile" 
-                className="w-full h-full object-cover rounded-full"
-                onError={() => setProfileImage(null)}
+                className="w-full h-full object-cover rounded-full absolute inset-0"
+                onError={(e) => {
+                  console.log('Badge preview image failed to display, falling back');
+                  setProfileImage(null);
+                }}
+                onLoad={() => {
+                  console.log('Badge preview image displayed successfully');
+                }}
               />
             ) : (
-              <span className="text-white font-bold text-lg">PFP</span>
+              <span className="text-white font-bold text-lg relative z-10">
+                {getDisplayUsername() !== 'Enter Username' ? 
+                  getDisplayUsername().slice(0, 2).toUpperCase() : 'PFP'}
+              </span>
             )}
           </div>
           <h4 className="text-2xl font-black text-white mb-3">
@@ -234,8 +233,6 @@ const BadgePreview = ({ preview, onDownload }) => {
       
       {/* Download Info */}
       <div className="text-center mt-4">
-        <p className="text-sm font-bold text-purple-400">Badge will be generated at 300 DPI</p>
-        <p className="text-sm font-bold text-purple-400">Perfect for social media!</p>
         
         {getDisplayUsername() !== 'Enter Username' && (
           <button
